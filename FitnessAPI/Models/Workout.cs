@@ -13,7 +13,7 @@ public partial class Workout
 
     public string? Notes { get; set; }
 
-    public virtual User User { get; set; } = null!;
+    public virtual User? User { get; set; } = null!;
 
     public virtual ICollection<WorkoutSet> WorkoutSets { get; set; } = new List<WorkoutSet>();
 }
