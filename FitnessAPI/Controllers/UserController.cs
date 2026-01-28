@@ -1,4 +1,5 @@
-﻿using FitnessAPI.Models;
+﻿using Azure.Core;
+using FitnessAPI.Models;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -22,17 +23,18 @@ namespace FitnessAPI.Controllers
 
         // Register new user
         [HttpPost("register")]
-        public async Task<ActionResult<User>> Register(User user)
+        public async Task<ActionResult<User>> Register(LoginRequest request)
         {
-            if (_context.Users.Any(u => u.Username == user.Username))
+            var newUser = new User
             {
-                return BadRequest("Username already taken");
-            }
+                Username = request.Username,
+                PasswordHash = request.Password // In a real app, you'd encrypt this here!
+            };
 
-            _context.Users.Add(user);
+            _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetUsers", new { id = user.UserId }, user);
+            return Ok(newUser);
         }
 
         //Login
