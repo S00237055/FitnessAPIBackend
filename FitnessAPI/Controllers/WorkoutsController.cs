@@ -15,6 +15,18 @@ namespace FitnessAPI.Controllers
             _context = context;
         }
 
+        [HttpGet]
+        public IActionResult GetWorkouts()
+        {
+            
+            var workouts = _context.Workouts
+                .Include(w => w.WorkoutSets)
+                .ThenInclude(s => s.Exercise)
+                .ToList();
+
+            return Ok(workouts);
+        }
+
         // GET: api/Workouts/user/{userId}
         [HttpGet("user/{userId}")]
         public async Task<ActionResult<IEnumerable<Workout>>> GetWorkoutHistory(int userId)
