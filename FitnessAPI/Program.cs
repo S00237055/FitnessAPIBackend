@@ -1,4 +1,3 @@
-
 using System.Text.Json.Serialization;
 
 namespace FitnessAPI
@@ -11,15 +10,24 @@ namespace FitnessAPI
 
             builder.Services.AddDbContext<FitnessAPI.Models.FitnessAppDbContext>();
 
-            // Add services to the container.
+            // 1. ADD THIS: Configure CORS service
+            builder.Services.AddCors(options =>
+            {
+                options.AddPolicy("AllowReactApp", policy =>
+                {
+                    policy.WithOrigins("http://localhost:8081")  // Allows requests from localhost:8081, mobile, etc.
+                          .AllowAnyMethod()  // Allows GET, POST, PUT, DELETE
+                          .AllowAnyHeader(); // Allows Custom Headers
+                });
+            });
 
+            // Add services to the container.
             builder.Services.AddControllers()
                 .AddJsonOptions(x =>
                 {
                     x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
                 });
 
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
             builder.Services.AddEndpointsApiExplorer();
             builder.Services.AddSwaggerGen();
 
@@ -32,8 +40,11 @@ namespace FitnessAPI
                 app.UseSwaggerUI();
             }
 
-            app.UseAuthorization();
+            // 2. ADD THIS: Enable CORS Middleware
+            // (Must be BEFORE UseAuthorization)
+            app.UseCors("AllowReactApp");
 
+            app.UseAuthorization();
 
             app.MapControllers();
 
