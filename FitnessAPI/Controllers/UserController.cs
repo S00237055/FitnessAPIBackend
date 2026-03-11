@@ -25,10 +25,13 @@ namespace FitnessAPI.Controllers
         [HttpPost("register")]
         public async Task<ActionResult<User>> Register(LoginRequest request)
         {
+            byte[] salt = PasswordHelper.CreateSalt();
+            byte[] hash = PasswordHelper.HashPassword(request.Password, salt);
             var newUser = new User
             {
                 Username = request.Username,
-                PasswordHash = request.Password // In a real app, you'd encrypt this here!
+                PasswordHash = Convert.ToBase64String(hash),
+                PasswordSalt = Convert.ToBase64String(salt)
             };
 
             _context.Users.Add(newUser);
@@ -45,10 +48,20 @@ namespace FitnessAPI.Controllers
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Username == request.Username);
             // check if user and password exist
-            if (user == null || user.PasswordHash != request.Password)
+            if (user == null)
             {
                 return Unauthorized("Invalid username or password.");
 
+            }
+
+            byte[] dbSalt = Convert.FromBase64String(user.PasswordSalt);
+            byte[] dbHash = Convert.FromBase64String(user.PasswordHash);
+
+            bool isValid = PasswordHelper.VerifyPassword(request.Password, dbSalt, dbHash);
+
+            if (!isValid)
+            {
+                return Unauthorized("Invalid username or password.");
             }
 
             // return user info
