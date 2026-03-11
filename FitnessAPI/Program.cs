@@ -12,7 +12,7 @@ namespace FitnessAPI
             builder.Services.AddDbContext<FitnessAPI.Models.FitnessAppDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-            var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
+            var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 
             builder.Services.AddCors(options =>
             {

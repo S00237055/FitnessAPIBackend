@@ -35,7 +35,14 @@ namespace FitnessAPI.Controllers
         [HttpPost("register")]
         public async Task<ActionResult<User>> Register(LoginRequest request)
         {
-            byte[] salt = PasswordHelper.CreateSalt();
+            var existingUser = await _context.Users
+                .FirstOrDefaultAsync(u => u.Username.ToLower() == request.Username.ToLower());
+
+            if (existingUser != null)
+            {
+                return BadRequest("Username already exists.");
+            }
+                byte[] salt = PasswordHelper.CreateSalt();
             byte[] hash = PasswordHelper.HashPassword(request.Password, salt);
             var newUser = new User
             {
