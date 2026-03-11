@@ -18,7 +18,17 @@ namespace FitnessAPI.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<User>>> GetUsers()
         {
-            return await _context.Users.ToListAsync();
+            var users = await _context.Users
+                .Select(u => new UserResponseDto
+                {
+                    UserId = u.UserId,
+                    Username = u.Username,
+                    CurrentWeight = u.CurrentWeight,
+                    GoalType = u.GoalType
+                })
+                .ToListAsync();
+
+            return Ok(users);
         }
 
         // Register new user
@@ -37,7 +47,15 @@ namespace FitnessAPI.Controllers
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
 
-            return Ok(newUser);
+            var userResponse = new UserResponseDto
+            {
+                UserId = newUser.UserId,
+                Username = newUser.Username,
+                CurrentWeight = newUser.CurrentWeight,
+                GoalType = newUser.GoalType
+            };
+
+            return Ok(userResponse);
         }
 
         //Login
@@ -64,8 +82,15 @@ namespace FitnessAPI.Controllers
                 return Unauthorized("Invalid username or password.");
             }
 
-            // return user info
-            return Ok(user);
+            var userResponse = new UserResponseDto
+            {
+                UserId = user.UserId,
+                Username = user.Username,
+                CurrentWeight = user.CurrentWeight,
+                GoalType = user.GoalType
+            };
+
+            return Ok(userResponse);
         }
 
         // expected data for login
@@ -83,16 +108,19 @@ namespace FitnessAPI.Controllers
             {
                 return NotFound();
             }
+
+            var userResponse = new UserResponseDto
+            {
+                UserId = user.UserId,
+                Username = user.Username,
+                CurrentWeight = user.CurrentWeight,
+                GoalType = user.GoalType
+            };
+
             return user;
         }
 
-        [HttpPost]
-        public async Task<ActionResult<User>> CreateUser(User user)
-        {
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-            return CreatedAtAction(nameof(GetUser), new { id = user.UserId }, user);
-        }
+        
 
     }
 }
