@@ -66,6 +66,39 @@ namespace FitnessAPI.Controllers
                 return StatusCode(500, $"Error communicating with AI: {ex.Message}");
             }
         }
+
+        [HttpPost("WorkoutAdvice")]
+        public async Task<IActionResult> GetWorkoutAdvice([FromBody] AiRequestDto request)
+        {
+            if (string.IsNullOrWhiteSpace(request.Prompt))
+                return BadRequest("Prompt cannot be empty.");
+
+            var apiKey = _configuration["GeminiApiKey"];
+            if (string.IsNullOrEmpty(apiKey))
+                return StatusCode(500, "API Key is missing in configuration.");
+
+            
+            var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey}";
+
+            var payload = new { contents = new[] { new { parts = new[] { new { text = request.Prompt } } } } };
+            var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
+            try
+            {
+                var response = await _httpClient.PostAsync(url, content);
+                response.EnsureSuccessStatusCode();
+
+                var responseString = await response.Content.ReadAsStringAsync();
+                using var jsonDoc = JsonDocument.Parse(responseString);
+                var adviceText = jsonDoc.RootElement.GetProperty("candidates")[0].GetProperty("content").GetProperty("parts")[0].GetProperty("text").GetString();
+
+                return Ok(new { advice = adviceText });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error communicating with AI: {ex.Message}");
+            }
+        }
     }
 
     // DTO to catch the incoming prompt from React Native
