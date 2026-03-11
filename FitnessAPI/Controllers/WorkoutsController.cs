@@ -16,13 +16,13 @@ namespace FitnessAPI.Controllers
         }
 
         [HttpGet]
-        public IActionResult GetWorkouts()
+        public async Task<IActionResult> GetWorkouts()
         {
             
             var workouts = _context.Workouts
                 .Include(w => w.WorkoutSets)
                 .ThenInclude(s => s.Exercise)
-                .ToList();
+                .ToListAsync();
 
             return Ok(workouts);
         }
