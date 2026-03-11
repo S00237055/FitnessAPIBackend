@@ -1,4 +1,5 @@
 using System.Text.Json.Serialization;
+using Microsoft.EntityFrameworkCore;
 
 namespace FitnessAPI
 {
@@ -8,7 +9,8 @@ namespace FitnessAPI
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Services.AddDbContext<FitnessAPI.Models.FitnessAppDbContext>();
+            builder.Services.AddDbContext<FitnessAPI.Models.FitnessAppDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
             builder.Services.AddCors(options =>
             {
