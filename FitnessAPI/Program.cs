@@ -12,11 +12,13 @@ namespace FitnessAPI
             builder.Services.AddDbContext<FitnessAPI.Models.FitnessAppDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+            var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>();
+
             builder.Services.AddCors(options =>
             {
                 options.AddPolicy("AllowReactApp", policy =>
                 {
-                    policy.WithOrigins("http://localhost:8081") 
+                    policy.WithOrigins(allowedOrigins) 
                           .AllowAnyMethod()  
                           .AllowAnyHeader(); 
                 });
