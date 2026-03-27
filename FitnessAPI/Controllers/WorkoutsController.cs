@@ -19,7 +19,7 @@ namespace FitnessAPI.Controllers
         public async Task<IActionResult> GetWorkouts()
         {
             
-            var workouts = _context.Workouts
+            var workouts = await _context.Workouts
                 .Include(w => w.WorkoutSets)
                 .ThenInclude(s => s.Exercise)
                 .ToListAsync();

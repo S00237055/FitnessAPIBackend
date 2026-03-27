@@ -39,13 +39,22 @@ namespace FitnessAPI.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 
-                    b.Property<string>("Description")
+                    b.Property<string>("Equipment")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("GifUrl")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Instructions")
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Name")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("Target")
+                        .HasColumnType("nvarchar(max)");
 
                     b.HasKey("ExerciseId")
                         .HasName("PK__Exercise__A074AD0F3ECC3F91");

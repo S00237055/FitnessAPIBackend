@@ -1,4 +1,6 @@
+using System.Text.Json;
 using System.Text.Json.Serialization;
+using FitnessAPI.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace FitnessAPI
@@ -18,17 +20,17 @@ namespace FitnessAPI
             {
                 options.AddPolicy("AllowReactApp", policy =>
                 {
-                    policy.WithOrigins(allowedOrigins) 
-                          .AllowAnyMethod()  
-                          .AllowAnyHeader(); 
+                    policy.WithOrigins(allowedOrigins)
+                          .AllowAnyMethod()
+                          .AllowAnyHeader();
                 });
             });
 
-            
+
             builder.Services.AddControllers()
-                .AddJsonOptions(x =>
+                .AddJsonOptions(options =>
                 {
-                    x.JsonSerializerOptions.ReferenceHandler = ReferenceHandler.IgnoreCycles;
+                    options.JsonSerializerOptions.ReferenceHandler = System.Text.Json.Serialization.ReferenceHandler.IgnoreCycles;
                 });
 
             builder.Services.AddEndpointsApiExplorer();
@@ -36,21 +38,75 @@ namespace FitnessAPI
 
             var app = builder.Build();
 
-            
+
             if (app.Environment.IsDevelopment())
             {
                 app.UseSwagger();
                 app.UseSwaggerUI();
             }
 
-            
-            app.UseCors("AllowReactApp");
+            using (var scope = app.Services.CreateScope())
+            {
+                var context = scope.ServiceProvider.GetRequiredService<FitnessAppDbContext>();
 
-            app.UseAuthorization();
+                if (!context.Exercises.Any())
+                {
+                    try
+                    {
+                        var jsonPath = Path.Combine(Directory.GetCurrentDirectory(), "exercises.json");
+                        var jsonData = File.ReadAllText(jsonPath);
 
-            app.MapControllers();
+                        var options = new JsonSerializerOptions
+                        {
+                            PropertyNameCaseInsensitive = true,
 
-            app.Run();
+                        };
+
+                        var importedExercises = JsonSerializer.Deserialize<List<ExerciseDb>>(jsonData, options);
+
+                        if (importedExercises != null)
+                        {
+                            string myApiUrl = "http://localhost:5226";
+
+                            var exercises = importedExercises.Select(e => new Exercise
+                            {
+                                Name = e.name,
+                                BodyPart = e.body_part,
+                                Target = e.target,
+                                Equipment = e.equipment,
+
+
+                                GifUrl = $"{myApiUrl}/{e.gif_url.Replace("videos", "gifs")}",
+
+                                Instructions = e.instructions != null && e.instructions.en != null? e.instructions.en : "No instructions provided."
+
+                            }).ToList();
+
+                            context.Exercises.AddRange(exercises);
+                            context.SaveChanges();
+                            Console.WriteLine("Exercise seeded successfully");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Error seeding exercises: {ex.Message}");
+                    }
+                }
+
+
+
+
+                app.UseCors("AllowReactApp");
+
+                app.UseHttpsRedirection();
+
+                app.UseStaticFiles();
+                app.UseAuthorization();
+
+                app.MapControllers();
+
+                app.Run();
+            }
         }
     }
 }
