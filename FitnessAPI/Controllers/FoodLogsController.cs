@@ -2,6 +2,7 @@
 using FitnessAPI.Models;
 using System.Threading.Tasks;
 using System;
+using System.Linq;
 
 namespace FitnessAPI.Controllers
 {
@@ -26,6 +27,8 @@ namespace FitnessAPI.Controllers
                 FoodName = foodDto.FoodName,
                 Calories = foodDto.Calories,
                 ProteinGrams = foodDto.ProteinGrams,
+                CarbsGrams = foodDto.CarbsGrams,
+                FatGrams = foodDto.FatGrams,
                 DateEaten = DateTime.Now
             };
 
@@ -56,5 +59,7 @@ namespace FitnessAPI.Controllers
         public string FoodName { get; set; }
         public int Calories { get; set; }
         public double ProteinGrams { get; set; }
+        public double CarbsGrams { get; set; }
+        public double FatGrams { get; set; }
     }
 }

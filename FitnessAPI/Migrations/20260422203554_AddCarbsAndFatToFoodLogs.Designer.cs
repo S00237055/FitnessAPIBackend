@@ -4,6 +4,7 @@ using FitnessAPI.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace FitnessAPI.Migrations
 {
     [DbContext(typeof(FitnessAppDbContext))]
-    partial class FitnessAppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260422203554_AddCarbsAndFatToFoodLogs")]
+    partial class AddCarbsAndFatToFoodLogs
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -74,16 +77,10 @@ namespace FitnessAPI.Migrations
                     b.Property<int>("Calories")
                         .HasColumnType("int");
 
-                    b.Property<double>("CarbsGrams")
-                        .HasColumnType("float");
-
                     b.Property<DateTime?>("DateEaten")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("datetime")
                         .HasDefaultValueSql("(getdate())");
-
-                    b.Property<double>("FatGrams")
-                        .HasColumnType("float");
 
                     b.Property<string>("FoodName")
                         .IsRequired()
@@ -96,6 +93,12 @@ namespace FitnessAPI.Migrations
                     b.Property<int>("UserId")
                         .HasColumnType("int")
                         .HasColumnName("UserID");
+
+                    b.Property<double>("carbsGrams")
+                        .HasColumnType("float");
+
+                    b.Property<double>("fatGrams")
+                        .HasColumnType("float");
 
                     b.HasKey("LogId")
                         .HasName("PK__FoodLogs__5E5499A8A4C23B3E");

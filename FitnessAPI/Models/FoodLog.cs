@@ -15,6 +15,10 @@ public partial class FoodLog
 
     public double ProteinGrams { get; set; }
 
+    public double CarbsGrams { get; set; }
+
+    public double FatGrams { get; set; }
+
     public DateTime? DateEaten { get; set; }
 
     public virtual User User { get; set; } = null!;
