@@ -126,8 +126,38 @@ namespace FitnessAPI.Controllers
 
             return user;
         }
+        public class UpdateProfileRequest
+        {
+            public double? CurrentWeight { get; set; }
+            public string? GoalType { get; set; }
+        }
 
-        
+        [HttpPut("{id}/profile")]
+        public async Task<ActionResult<UserResponseDto>> UpdateProfile(int id, [FromBody] UpdateProfileRequest request)
+        {
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                return NotFound("User not found.");
+            }
+
+            user.CurrentWeight = request.CurrentWeight;
+            user.GoalType = request.GoalType;
+
+            await _context.SaveChangesAsync();
+
+            var userResponse = new UserResponseDto
+            {
+                UserId = user.UserId,
+                Username = user.Username,
+                CurrentWeight = user.CurrentWeight,
+                GoalType = user.GoalType
+            };
+
+            return Ok(userResponse);
+        }
+
+
 
     }
 }

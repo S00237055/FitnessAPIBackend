@@ -86,7 +86,11 @@ namespace FitnessAPI.Controllers
             try
             {
                 var response = await _httpClient.PostAsync(url, content);
-                response.EnsureSuccessStatusCode();
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    return StatusCode((int)response.StatusCode, $"Google API Error: {errorContent}");
+                }
 
                 var responseString = await response.Content.ReadAsStringAsync();
                 using var jsonDoc = JsonDocument.Parse(responseString);
