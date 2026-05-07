@@ -33,7 +33,7 @@ namespace FitnessAPI.Controllers
 
         // Register new user
         [HttpPost("register")]
-        public async Task<ActionResult<User>> Register(LoginRequest request)
+        public async Task<ActionResult<User>> Register(RegisterRequest request)
         {
             var existingUser = await _context.Users
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == request.Username.ToLower());
@@ -48,7 +48,9 @@ namespace FitnessAPI.Controllers
             {
                 Username = request.Username,
                 PasswordHash = Convert.ToBase64String(hash),
-                PasswordSalt = Convert.ToBase64String(salt)
+                PasswordSalt = Convert.ToBase64String(salt),
+                CurrentWeight = request.CurrentWeight,
+                GoalType = request.GoalType
             };
 
             _context.Users.Add(newUser);
@@ -105,6 +107,14 @@ namespace FitnessAPI.Controllers
         {
             public string Username { get; set; }
             public string Password { get; set; }
+        }
+
+        public class RegisterRequest
+        {
+            public string Username { get; set; }
+            public string Password { get; set; }
+            public double? CurrentWeight { get; set; }
+            public string? GoalType { get; set; }
         }
 
         [HttpGet("{id}")]
