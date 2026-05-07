@@ -39,12 +39,12 @@ namespace FitnessAPI.Controllers
         }
 
         
-        [HttpGet]
-        public IActionResult GetFoodLogs()
+        [HttpGet("user/{userId}")]
+        public IActionResult GetUserFoodLogs(int userId)
         {
             
             var logs = _context.FoodLogs
-                .Where(log => log.UserId == 1)
+                .Where(log => log.UserId == userId)
                 .OrderByDescending(log => log.DateEaten)
                 .ToList();
 

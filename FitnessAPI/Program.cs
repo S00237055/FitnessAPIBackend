@@ -20,7 +20,7 @@ namespace FitnessAPI
             {
                 options.AddPolicy("AllowReactApp", policy =>
                 {
-                    policy.WithOrigins(allowedOrigins)
+                    policy.AllowAnyOrigin()
                           .AllowAnyMethod()
                           .AllowAnyHeader();
                 });
@@ -38,21 +38,37 @@ namespace FitnessAPI
 
             var app = builder.Build();
 
+            app.UseSwagger();
+            app.UseSwaggerUI();
 
             if (app.Environment.IsDevelopment())
             {
-                app.UseSwagger();
-                app.UseSwaggerUI();
+                
             }
+
+            app.UseCors("AllowReactApp");
+
+            app.UseHttpsRedirection();
+
+            app.UseStaticFiles();
+            app.UseAuthorization();
+
+            app.MapControllers();
 
             using (var scope = app.Services.CreateScope())
             {
                 var context = scope.ServiceProvider.GetRequiredService<FitnessAppDbContext>();
+                context.Database.Migrate();
 
-                if (!context.Exercises.Any())
+
+                try
                 {
-                    try
+                    
+
+                    if (!context.Exercises.Any())
                     {
+
+
                         var jsonPath = Path.Combine(Directory.GetCurrentDirectory(), "exercises.json");
                         var jsonData = File.ReadAllText(jsonPath);
 
@@ -66,7 +82,7 @@ namespace FitnessAPI
 
                         if (importedExercises != null)
                         {
-                            string myApiUrl = "http://localhost:5226";
+                            string myApiUrl = "https://my-fitness-api-123-f5gcbyb0bzaggwdm.italynorth-01.azurewebsites.net";
 
                             var exercises = importedExercises.Select(e => new Exercise
                             {
@@ -78,7 +94,7 @@ namespace FitnessAPI
 
                                 GifUrl = $"{myApiUrl}/{e.gif_url.Replace("videos", "gifs")}",
 
-                                Instructions = e.instructions != null && e.instructions.en != null? e.instructions.en : "No instructions provided."
+                                Instructions = e.instructions != null && e.instructions.en != null ? e.instructions.en : "No instructions provided."
 
                             }).ToList();
 
@@ -87,23 +103,19 @@ namespace FitnessAPI
                             Console.WriteLine("Exercise seeded successfully");
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        Console.WriteLine($"Error seeding exercises: {ex.Message}");
-                    }
                 }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Error seeding exercises: {ex.Message}");
+                }
+                
 
 
 
 
-                app.UseCors("AllowReactApp");
+                
 
-                app.UseHttpsRedirection();
-
-                app.UseStaticFiles();
-                app.UseAuthorization();
-
-                app.MapControllers();
+                
 
                 app.Run();
             }
