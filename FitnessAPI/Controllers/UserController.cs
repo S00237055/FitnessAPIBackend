@@ -1,4 +1,4 @@
-﻿using Azure.Core;
+using Azure.Core;
 using FitnessAPI.Models;
 using Microsoft.AspNetCore.Identity.Data;
 using Microsoft.AspNetCore.Mvc;
@@ -134,7 +134,7 @@ namespace FitnessAPI.Controllers
                 GoalType = user.GoalType
             };
 
-            return user;
+            return Ok(userResponse);
         }
         public class UpdateProfileRequest
         {

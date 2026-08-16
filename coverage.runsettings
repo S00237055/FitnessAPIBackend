@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Coverage settings for FitnessAPI.
+
+  ExcludeByFile removes auto-generated Entity Framework migration files from the
+  calculation. Migrations are produced by the EF tooling, are never executed by
+  the test suite, and contain almost no branching logic, so including them
+  understates coverage of the hand-written application code without saying
+  anything meaningful about how well that code is tested.
+
+  NOTE: CompilerGeneratedAttribute must NOT appear in ExcludeByAttribute.
+  C# compiles every async method into a compiler-generated state machine class,
+  so excluding that attribute silently discards the body of every async method
+  in the project and reports a badly understated figure.
+
+  Usage, from the solution folder:
+      dotnet test [dash][dash]collect:"XPlat Code Coverage" [dash][dash]settings coverage.runsettings
+-->
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat code coverage">
+        <Configuration>
+          <Format>cobertura</Format>
+          <ExcludeByFile>**/Migrations/*.cs</ExcludeByFile>
+          <ExcludeByAttribute>GeneratedCodeAttribute,ExcludeFromCodeCoverageAttribute</ExcludeByAttribute>
+          <SkipAutoProps>true</SkipAutoProps>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
