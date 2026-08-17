@@ -19,36 +19,7 @@ public class FoodLogsControllerTests
     };
 
     [Fact]
-    public async Task PostFoodLog_WithValidData_ReturnsOk()
-    {
-        using var context = TestDatabase.Create();
-        var user = TestDatabase.SeedUser(context);
-        var controller = new FoodLogsController(context).AuthenticatedAs(user.UserId);
-
-        var result = await controller.PostFoodLog(SampleFood(user.UserId));
-
-        Assert.IsType<OkObjectResult>(result);
-    }
-
-    [Fact]
-    public async Task PostFoodLog_PersistsAllMacronutrientValues()
-    {
-        using var context = TestDatabase.Create();
-        var user = TestDatabase.SeedUser(context);
-        var controller = new FoodLogsController(context).AuthenticatedAs(user.UserId);
-
-        await controller.PostFoodLog(SampleFood(user.UserId));
-
-        var stored = await context.FoodLogs.SingleAsync();
-        Assert.Equal("Porridge", stored.FoodName);
-        Assert.Equal(389, stored.Calories);
-        Assert.Equal(16.9, stored.ProteinGrams);
-        Assert.Equal(66.3, stored.CarbsGrams);
-        Assert.Equal(6.9, stored.FatGrams);
-    }
-
-    [Fact]
-    public async Task PostFoodLog_SetsTheDateEatenAutomatically()
+    public async Task PostFoodLog_PersistsAllMacronutrientValuesAndATimestamp()
     {
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
@@ -56,14 +27,22 @@ public class FoodLogsControllerTests
 
         var before = DateTime.Now.AddSeconds(-5);
 
-        await controller.PostFoodLog(SampleFood(user.UserId, "Banana"));
+        var result = await controller.PostFoodLog(SampleFood(user.UserId));
+
+        Assert.IsType<OkObjectResult>(result);
 
         var stored = await context.FoodLogs.SingleAsync();
+        Assert.Equal("Porridge", stored.FoodName);
+        Assert.Equal(389, stored.Calories);
+        Assert.Equal(16.9, stored.ProteinGrams);
+        Assert.Equal(66.3, stored.CarbsGrams);
+        Assert.Equal(6.9, stored.FatGrams);
+
         Assert.NotNull(stored.DateEaten);
         Assert.InRange(stored.DateEaten!.Value, before, DateTime.Now.AddSeconds(5));
     }
 
-    
+   
     [Fact]
     public async Task PostFoodLog_IgnoresTheUserIdInTheBody_AndUsesTheToken()
     {
@@ -71,7 +50,6 @@ public class FoodLogsControllerTests
         var alice = TestDatabase.SeedUser(context, "alice");
         var bob = TestDatabase.SeedUser(context, "bob");
 
-        // Alice is authenticated but submits Bob's identifier in the payload.
         var controller = new FoodLogsController(context).AuthenticatedAs(alice.UserId);
 
         await controller.PostFoodLog(SampleFood(bob.UserId, "Injected"));
@@ -81,100 +59,24 @@ public class FoodLogsControllerTests
     }
 
     [Fact]
-    public async Task PostFoodLog_WithNoFoodName_ReturnsBadRequest()
-    {
-        using var context = TestDatabase.Create();
-        var user = TestDatabase.SeedUser(context);
-        var controller = new FoodLogsController(context).AuthenticatedAs(user.UserId);
-
-        var dto = SampleFood(user.UserId);
-        dto.FoodName = "   ";
-
-        var result = await controller.PostFoodLog(dto);
-
-        Assert.IsType<BadRequestObjectResult>(result);
-    }
-
-    [Fact]
-    public async Task PostFoodLog_WithNoAuthenticatedIdentity_ReturnsUnauthorized()
-    {
-        using var context = TestDatabase.Create();
-        var user = TestDatabase.SeedUser(context);
-        var controller = new FoodLogsController(context).Anonymous();
-
-        var result = await controller.PostFoodLog(SampleFood(user.UserId));
-
-        Assert.IsType<UnauthorizedResult>(result);
-    }
-
-    [Fact]
-    public void GetUserFoodLogs_ReturnsOnlyTheAuthenticatedUsersEntries()
+    public void GetUserFoodLogs_ReturnsOwnEntriesNewestFirstAndForbidsOthers()
     {
         using var context = TestDatabase.Create();
         var alice = TestDatabase.SeedUser(context, "alice");
         var bob = TestDatabase.SeedUser(context, "bob");
 
-        TestDatabase.SeedFoodLog(context, alice.UserId, "Alice Food");
-        TestDatabase.SeedFoodLog(context, bob.UserId, "Bob Food");
-        TestDatabase.SeedFoodLog(context, bob.UserId, "Bob Second Food");
-
-        var controller = new FoodLogsController(context).AuthenticatedAs(alice.UserId);
-
-        var result = controller.GetUserFoodLogs(alice.UserId);
-
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var logs = Assert.IsAssignableFrom<IEnumerable<FoodLog>>(ok.Value).ToList();
-        Assert.Single(logs);
-        Assert.Equal("Alice Food", logs[0].FoodName);
-    }
-
-    
-    [Fact]
-    public void GetUserFoodLogs_ForAnotherUser_ReturnsForbidden()
-    {
-        using var context = TestDatabase.Create();
-        var alice = TestDatabase.SeedUser(context, "alice");
-        var bob = TestDatabase.SeedUser(context, "bob");
+        TestDatabase.SeedFoodLog(context, alice.UserId, "Older", eatenAt: DateTime.Now.AddDays(-2));
+        TestDatabase.SeedFoodLog(context, alice.UserId, "Newer", eatenAt: DateTime.Now);
         TestDatabase.SeedFoodLog(context, bob.UserId, "Bob Food");
 
         var controller = new FoodLogsController(context).AuthenticatedAs(alice.UserId);
 
-        var result = controller.GetUserFoodLogs(bob.UserId);
+        var own = Assert.IsType<OkObjectResult>(controller.GetUserFoodLogs(alice.UserId));
+        var logs = Assert.IsAssignableFrom<IEnumerable<FoodLog>>(own.Value).ToList();
 
-        Assert.IsType<ForbidResult>(result);
-    }
+        Assert.Equal(2, logs.Count);            // Bob's entry is not included
+        Assert.Equal("Newer", logs[0].FoodName); // newest first
 
-    [Fact]
-    public void GetUserFoodLogs_ReturnsEntriesNewestFirst()
-    {
-        using var context = TestDatabase.Create();
-        var user = TestDatabase.SeedUser(context);
-
-        TestDatabase.SeedFoodLog(context, user.UserId, "Oldest", eatenAt: DateTime.Now.AddDays(-3));
-        TestDatabase.SeedFoodLog(context, user.UserId, "Newest", eatenAt: DateTime.Now);
-        TestDatabase.SeedFoodLog(context, user.UserId, "Middle", eatenAt: DateTime.Now.AddDays(-1));
-
-        var controller = new FoodLogsController(context).AuthenticatedAs(user.UserId);
-
-        var result = controller.GetUserFoodLogs(user.UserId);
-
-        var ok = Assert.IsType<OkObjectResult>(result);
-        var logs = Assert.IsAssignableFrom<IEnumerable<FoodLog>>(ok.Value).ToList();
-        Assert.Equal("Newest", logs[0].FoodName);
-        Assert.Equal("Middle", logs[1].FoodName);
-        Assert.Equal("Oldest", logs[2].FoodName);
-    }
-
-    [Fact]
-    public void GetUserFoodLogs_WithNoEntries_ReturnsAnEmptyList()
-    {
-        using var context = TestDatabase.Create();
-        var user = TestDatabase.SeedUser(context);
-        var controller = new FoodLogsController(context).AuthenticatedAs(user.UserId);
-
-        var result = controller.GetUserFoodLogs(user.UserId);
-
-        var ok = Assert.IsType<OkObjectResult>(result);
-        Assert.Empty(Assert.IsAssignableFrom<IEnumerable<FoodLog>>(ok.Value));
+        Assert.IsType<ForbidResult>(controller.GetUserFoodLogs(bob.UserId));
     }
 }

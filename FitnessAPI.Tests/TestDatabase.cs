@@ -3,11 +3,6 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FitnessAPI.Tests;
 
-/// <summary>
-/// Creates an isolated in-memory database for a single test.
-/// Each call uses a fresh database name so that tests cannot affect one another
-/// and can safely run in parallel.
-/// </summary>
 public static class TestDatabase
 {
     public static FitnessAppDbContext Create()
@@ -19,7 +14,6 @@ public static class TestDatabase
         return new FitnessAppDbContext(options);
     }
 
-    /// <summary>Adds a user with a correctly salted and hashed password.</summary>
     public static User SeedUser(
         FitnessAppDbContext context,
         string username = "testuser",

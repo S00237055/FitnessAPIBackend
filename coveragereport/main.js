@@ -290,14 +290,17 @@ var assemblies = [
   {
     "name": "FitnessAPI",
     "classes": [
-      { "name": "FitnessAPI.Controllers.AiController", "rp": "FitnessAPI_AiController.html", "cl": 26, "ucl": 53, "cal": 79, "tl": 140, "cb": 9, "tb": 14, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "FitnessAPI.Controllers.ExercisesController", "rp": "FitnessAPI_ExercisesController.html", "cl": 24, "ucl": 0, "cal": 24, "tl": 60, "cb": 4, "tb": 4, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "FitnessAPI.Controllers.FoodLogsController", "rp": "FitnessAPI_FoodLogsController.html", "cl": 26, "ucl": 0, "cal": 26, "tl": 65, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "FitnessAPI.Controllers.UserController", "rp": "FitnessAPI_UserController.html", "cl": 95, "ucl": 0, "cal": 95, "tl": 173, "cb": 10, "tb": 10, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "FitnessAPI.Controllers.WorkoutsController", "rp": "FitnessAPI_WorkoutsController.html", "cl": 18, "ucl": 7, "cal": 25, "tl": 55, "cb": 2, "tb": 2, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FitnessAPI.Controllers.AiController", "rp": "FitnessAPI_AiController.html", "cl": 0, "ucl": 79, "cal": 79, "tl": 144, "cb": 0, "tb": 14, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FitnessAPI.Controllers.ExercisesController", "rp": "FitnessAPI_ExercisesController.html", "cl": 9, "ucl": 15, "cal": 24, "tl": 61, "cb": 1, "tb": 4, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FitnessAPI.Controllers.FoodLogsController", "rp": "FitnessAPI_FoodLogsController.html", "cl": 34, "ucl": 6, "cal": 40, "tl": 83, "cb": 5, "tb": 8, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FitnessAPI.Controllers.UserController", "rp": "FitnessAPI_UserController.html", "cl": 87, "ucl": 12, "cal": 99, "tl": 184, "cb": 15, "tb": 22, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FitnessAPI.Controllers.WorkoutsController", "rp": "FitnessAPI_WorkoutsController.html", "cl": 31, "ucl": 12, "cal": 43, "tl": 82, "cb": 5, "tb": 10, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FitnessAPI.Extensions.ClaimsPrincipalExtensions", "rp": "FitnessAPI_ClaimsPrincipalExtensions.html", "cl": 4, "ucl": 3, "cal": 7, "tl": 18, "cb": 1, "tb": 2, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FitnessAPI.Middleware.GlobalExceptionHandler", "rp": "FitnessAPI_GlobalExceptionHandler.html", "cl": 0, "ucl": 20, "cal": 20, "tl": 40, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FitnessAPI.Models.FitnessAppDbContext", "rp": "FitnessAPI_FitnessAppDbContext.html", "cl": 73, "ucl": 3, "cal": 76, "tl": 109, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
       { "name": "FitnessAPI.PasswordHelper", "rp": "FitnessAPI_PasswordHelper.html", "cl": 18, "ucl": 0, "cal": 18, "tl": 37, "cb": 0, "tb": 0, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
-      { "name": "FitnessAPI.Program", "rp": "FitnessAPI_Program.html", "cl": 0, "ucl": 76, "cal": 76, "tl": 124, "cb": 0, "tb": 12, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FitnessAPI.Program", "rp": "FitnessAPI_Program.html", "cl": 0, "ucl": 125, "cal": 125, "tl": 172, "cb": 0, "tb": 12, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
+      { "name": "FitnessAPI.Services.TokenService", "rp": "FitnessAPI_TokenService.html", "cl": 0, "ucl": 30, "cal": 30, "tl": 54, "cb": 0, "tb": 4, "cm": 0, "fcm": 0, "tm": 0, "lch": [], "bch": [], "mch": [], "mfch": [], "hc": [], "metrics": { } },
     ]},
 ];
 
@@ -312,10 +315,16 @@ var riskHotspotMetrics = [
 
 var riskHotspots = [
   {
-    "assembly": "FitnessAPI", "class": "FitnessAPI.Program", "reportPath": "FitnessAPI_Program.html", "methodName": "Main(System.String[])", "methodShortName": "Main(...)", "fileIndex": 0, "line": 11,
+    "assembly": "FitnessAPI", "class": "FitnessAPI.Program", "reportPath": "FitnessAPI_Program.html", "methodName": "Main(System.String[])", "methodShortName": "Main(...)", "fileIndex": 0, "line": 17,
     "metrics": [
       { "value": 156, "exceeded": true },
       { "value": 12, "exceeded": false },
+    ]},
+  {
+    "assembly": "FitnessAPI", "class": "FitnessAPI.Controllers.AiController", "reportPath": "FitnessAPI_AiController.html", "methodName": "GetWorkoutAdvice()", "methodShortName": "GetWorkoutAdvice()", "fileIndex": 0, "line": 75,
+    "metrics": [
+      { "value": 42, "exceeded": true },
+      { "value": 6, "exceeded": false },
     ]},
 ];
 
