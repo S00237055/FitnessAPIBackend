@@ -1,11 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using System.Text.Json;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.Text;
+using System.Text.Json;
 
 namespace FitnessAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class AiController : ControllerBase
     {
         private readonly IConfiguration _configuration;
@@ -23,7 +25,7 @@ namespace FitnessAPI.Controllers
             if (string.IsNullOrWhiteSpace(request.Prompt))
                 return BadRequest("Prompt cannot be empty.");
 
-            // Gets the secret API key from appsettings.Development.json
+            // Gets the secret API key from configuration
             var apiKey = _configuration["GeminiApiKey"];
             if (string.IsNullOrEmpty(apiKey))
                 return StatusCode(500, "API Key is missing in configuration.");
@@ -59,7 +61,7 @@ namespace FitnessAPI.Controllers
                     .GetProperty("text")
                     .GetString();
 
-                // Sends the text back to React Native!
+                // Sends the text back to React Native
                 return Ok(new { advice = adviceText });
             }
             catch (Exception ex)
@@ -77,7 +79,6 @@ namespace FitnessAPI.Controllers
             var apiKey = _configuration["GeminiApiKey"];
             if (string.IsNullOrEmpty(apiKey))
                 return StatusCode(500, "API Key is missing in configuration.");
-
 
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey}";
 
@@ -110,12 +111,15 @@ namespace FitnessAPI.Controllers
         {
             if (string.IsNullOrWhiteSpace(request.Prompt))
                 return BadRequest("Prompt cannot be empty.");
+
             var apiKey = _configuration["GeminiApiKey"];
             if (string.IsNullOrEmpty(apiKey))
                 return StatusCode(500, "API Key is missing in configuration.");
+
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey}";
             var payload = new { contents = new[] { new { parts = new[] { new { text = request.Prompt } } } } };
             var content = new StringContent(JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
+
             try
             {
                 var response = await _httpClient.PostAsync(url, content);

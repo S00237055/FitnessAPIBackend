@@ -1,13 +1,13 @@
-﻿using Microsoft.AspNetCore.Mvc;
+using FitnessAPI.Extensions;
 using FitnessAPI.Models;
-using System.Threading.Tasks;
-using System;
-using System.Linq;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace FitnessAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class FoodLogsController : ControllerBase
     {
         private readonly FitnessAppDbContext _context;
@@ -20,10 +20,20 @@ namespace FitnessAPI.Controllers
         [HttpPost]
         public async Task<IActionResult> PostFoodLog(FoodLogDto foodDto)
         {
-            
+            var callerId = HttpContext.User.GetUserId();
+            if (callerId == null)
+            {
+                return Unauthorized();
+            }
+
+            if (string.IsNullOrWhiteSpace(foodDto.FoodName))
+            {
+                return BadRequest("A food name is required.");
+            }
+
             var foodLog = new FoodLog
             {
-                UserId = foodDto.UserId,
+                UserId = callerId.Value,
                 FoodName = foodDto.FoodName,
                 Calories = foodDto.Calories,
                 ProteinGrams = foodDto.ProteinGrams,
@@ -38,13 +48,22 @@ namespace FitnessAPI.Controllers
             return Ok(new { message = "Food logged successfully!", foodLog });
         }
 
-        
         [HttpGet("user/{userId}")]
         public IActionResult GetUserFoodLogs(int userId)
         {
-            
+            var callerId = HttpContext.User.GetUserId();
+            if (callerId == null)
+            {
+                return Unauthorized();
+            }
+
+            if (callerId != userId)
+            {
+                return Forbid();
+            }
+
             var logs = _context.FoodLogs
-                .Where(log => log.UserId == userId)
+                .Where(log => log.UserId == callerId.Value)
                 .OrderByDescending(log => log.DateEaten)
                 .ToList();
 
@@ -52,11 +71,10 @@ namespace FitnessAPI.Controllers
         }
     }
 
-   
     public class FoodLogDto
     {
         public int UserId { get; set; }
-        public string FoodName { get; set; }
+        public string FoodName { get; set; } = null!;
         public int Calories { get; set; }
         public double ProteinGrams { get; set; }
         public double CarbsGrams { get; set; }

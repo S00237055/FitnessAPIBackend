@@ -1,6 +1,7 @@
-using Azure.Core;
+using FitnessAPI.Extensions;
 using FitnessAPI.Models;
-using Microsoft.AspNetCore.Identity.Data;
+using FitnessAPI.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,30 +12,24 @@ namespace FitnessAPI.Controllers
     public class UserController : ControllerBase
     {
         private readonly FitnessAppDbContext _context;
-        public UserController(FitnessAppDbContext context)
+        private readonly ITokenService _tokenService;
+
+        public UserController(FitnessAppDbContext context, ITokenService tokenService)
         {
             _context = context;
-        }
-        [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> GetUsers()
-        {
-            var users = await _context.Users
-                .Select(u => new UserResponseDto
-                {
-                    UserId = u.UserId,
-                    Username = u.Username,
-                    CurrentWeight = u.CurrentWeight,
-                    GoalType = u.GoalType
-                })
-                .ToListAsync();
-
-            return Ok(users);
+            _tokenService = tokenService;
         }
 
         // Register new user
+        [AllowAnonymous]
         [HttpPost("register")]
-        public async Task<ActionResult<User>> Register(RegisterRequest request)
+        public async Task<ActionResult<AuthResponseDto>> Register(RegisterRequest request)
         {
+            if (string.IsNullOrWhiteSpace(request.Username) || string.IsNullOrWhiteSpace(request.Password))
+            {
+                return BadRequest("Username and password are required.");
+            }
+
             var existingUser = await _context.Users
                 .FirstOrDefaultAsync(u => u.Username.ToLower() == request.Username.ToLower());
 
@@ -42,8 +37,10 @@ namespace FitnessAPI.Controllers
             {
                 return BadRequest("Username already exists.");
             }
-                byte[] salt = PasswordHelper.CreateSalt();
+
+            byte[] salt = PasswordHelper.CreateSalt();
             byte[] hash = PasswordHelper.HashPassword(request.Password, salt);
+
             var newUser = new User
             {
                 Username = request.Username,
@@ -56,29 +53,26 @@ namespace FitnessAPI.Controllers
             _context.Users.Add(newUser);
             await _context.SaveChangesAsync();
 
-            var userResponse = new UserResponseDto
+            return Ok(new AuthResponseDto
             {
                 UserId = newUser.UserId,
                 Username = newUser.Username,
                 CurrentWeight = newUser.CurrentWeight,
-                GoalType = newUser.GoalType
-            };
-
-            return Ok(userResponse);
+                GoalType = newUser.GoalType,
+                Token = _tokenService.CreateToken(newUser)
+            });
         }
 
-        //Login
+        // Login
+        [AllowAnonymous]
         [HttpPost("login")]
-        public async Task<ActionResult<User>> Login(LoginRequest request)
+        public async Task<ActionResult<AuthResponseDto>> Login(LoginRequest request)
         {
-            // find user in database
             var user = await _context.Users
                 .FirstOrDefaultAsync(u => u.Username == request.Username);
-            // check if user and password exist
             if (user == null)
             {
                 return Unauthorized("Invalid username or password.");
-
             }
 
             byte[] dbSalt = Convert.FromBase64String(user.PasswordSalt);
@@ -91,60 +85,82 @@ namespace FitnessAPI.Controllers
                 return Unauthorized("Invalid username or password.");
             }
 
-            var userResponse = new UserResponseDto
+            return Ok(new AuthResponseDto
             {
                 UserId = user.UserId,
                 Username = user.Username,
                 CurrentWeight = user.CurrentWeight,
-                GoalType = user.GoalType
-            };
-
-            return Ok(userResponse);
+                GoalType = user.GoalType,
+                Token = _tokenService.CreateToken(user)
+            });
         }
 
         // expected data for login
         public class LoginRequest
         {
-            public string Username { get; set; }
-            public string Password { get; set; }
+            public string Username { get; set; } = null!;
+            public string Password { get; set; } = null!;
         }
 
         public class RegisterRequest
         {
-            public string Username { get; set; }
-            public string Password { get; set; }
+            public string Username { get; set; } = null!;
+            public string Password { get; set; } = null!;
             public double? CurrentWeight { get; set; }
             public string? GoalType { get; set; }
         }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUser(int id)
-        {
-            var user = await _context.Users.FindAsync(id);
-            if (user == null)
-            {
-                return NotFound();
-            }
-
-            var userResponse = new UserResponseDto
-            {
-                UserId = user.UserId,
-                Username = user.Username,
-                CurrentWeight = user.CurrentWeight,
-                GoalType = user.GoalType
-            };
-
-            return Ok(userResponse);
-        }
         public class UpdateProfileRequest
         {
             public double? CurrentWeight { get; set; }
             public string? GoalType { get; set; }
         }
 
+        [Authorize]
+        [HttpGet("{id}")]
+        public async Task<ActionResult<UserResponseDto>> GetUser(int id)
+        {
+            var callerId = HttpContext.User.GetUserId();
+            if (callerId == null)
+            {
+                return Unauthorized();
+            }
+
+            if (callerId != id)
+            {
+                return Forbid();
+            }
+
+            var user = await _context.Users.FindAsync(id);
+            if (user == null)
+            {
+                return NotFound();
+            }
+
+            return Ok(new UserResponseDto
+            {
+                UserId = user.UserId,
+                Username = user.Username,
+                CurrentWeight = user.CurrentWeight,
+                GoalType = user.GoalType
+            });
+        }
+
+        [Authorize]
         [HttpPut("{id}/profile")]
         public async Task<ActionResult<UserResponseDto>> UpdateProfile(int id, [FromBody] UpdateProfileRequest request)
         {
+            var callerId = HttpContext.User.GetUserId();
+            if (callerId == null)
+            {
+                return Unauthorized();
+            }
+
+            if (callerId != id)
+            {
+                return Forbid();
+            }
+
             var user = await _context.Users.FindAsync(id);
             if (user == null)
             {
@@ -156,18 +172,13 @@ namespace FitnessAPI.Controllers
 
             await _context.SaveChangesAsync();
 
-            var userResponse = new UserResponseDto
+            return Ok(new UserResponseDto
             {
                 UserId = user.UserId,
                 Username = user.Username,
                 CurrentWeight = user.CurrentWeight,
                 GoalType = user.GoalType
-            };
-
-            return Ok(userResponse);
+            });
         }
-
-
-
     }
 }

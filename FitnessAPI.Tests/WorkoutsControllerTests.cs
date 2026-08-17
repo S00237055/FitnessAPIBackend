@@ -29,7 +29,7 @@ public class WorkoutsControllerTests
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
         var exercise = TestDatabase.SeedExercise(context);
-        var controller = new WorkoutsController(context);
+        var controller = new WorkoutsController(context).AuthenticatedAs(user.UserId);
 
         var result = await controller.LogWorkout(BuildWorkout(user.UserId, exercise.ExerciseId, DateTime.Now));
 
@@ -42,11 +42,10 @@ public class WorkoutsControllerTests
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
         var exercise = TestDatabase.SeedExercise(context);
-        var controller = new WorkoutsController(context);
+        var controller = new WorkoutsController(context).AuthenticatedAs(user.UserId);
 
         await controller.LogWorkout(BuildWorkout(user.UserId, exercise.ExerciseId, DateTime.Now));
 
-        // The parent and both children must be written together.
         Assert.Equal(1, await context.Workouts.CountAsync());
         Assert.Equal(2, await context.WorkoutSets.CountAsync());
     }
@@ -57,7 +56,7 @@ public class WorkoutsControllerTests
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
         var exercise = TestDatabase.SeedExercise(context);
-        var controller = new WorkoutsController(context);
+        var controller = new WorkoutsController(context).AuthenticatedAs(user.UserId);
 
         await controller.LogWorkout(BuildWorkout(user.UserId, exercise.ExerciseId, DateTime.Now));
 
@@ -74,7 +73,7 @@ public class WorkoutsControllerTests
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
         var exercise = TestDatabase.SeedExercise(context);
-        var controller = new WorkoutsController(context);
+        var controller = new WorkoutsController(context).AuthenticatedAs(user.UserId);
 
         var before = DateTime.Now.AddSeconds(-5);
 
@@ -86,20 +85,87 @@ public class WorkoutsControllerTests
     }
 
     [Fact]
-    public async Task GetWorkoutHistory_ReturnsOnlyTheRequestedUsersSessions()
+    public async Task LogWorkout_IgnoresTheUserIdInTheBody_AndUsesTheToken()
     {
         using var context = TestDatabase.Create();
         var alice = TestDatabase.SeedUser(context, "alice");
         var bob = TestDatabase.SeedUser(context, "bob");
         var exercise = TestDatabase.SeedExercise(context);
-        var controller = new WorkoutsController(context);
 
-        await controller.LogWorkout(BuildWorkout(alice.UserId, exercise.ExerciseId, DateTime.Now));
+        var controller = new WorkoutsController(context).AuthenticatedAs(alice.UserId);
+
         await controller.LogWorkout(BuildWorkout(bob.UserId, exercise.ExerciseId, DateTime.Now));
 
+        var stored = await context.Workouts.SingleAsync();
+        Assert.Equal(alice.UserId, stored.UserId);
+    }
+
+    [Fact]
+    public async Task LogWorkout_WithNoAuthenticatedIdentity_ReturnsUnauthorized()
+    {
+        using var context = TestDatabase.Create();
+        var user = TestDatabase.SeedUser(context);
+        var exercise = TestDatabase.SeedExercise(context);
+        var controller = new WorkoutsController(context).Anonymous();
+
+        var result = await controller.LogWorkout(BuildWorkout(user.UserId, exercise.ExerciseId, DateTime.Now));
+
+        Assert.IsType<UnauthorizedResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetWorkoutHistory_ReturnsOnlyTheAuthenticatedUsersSessions()
+    {
+        using var context = TestDatabase.Create();
+        var alice = TestDatabase.SeedUser(context, "alice");
+        var bob = TestDatabase.SeedUser(context, "bob");
+        var exercise = TestDatabase.SeedExercise(context);
+
+        await new WorkoutsController(context).AuthenticatedAs(alice.UserId)
+            .LogWorkout(BuildWorkout(alice.UserId, exercise.ExerciseId, DateTime.Now));
+        await new WorkoutsController(context).AuthenticatedAs(bob.UserId)
+            .LogWorkout(BuildWorkout(bob.UserId, exercise.ExerciseId, DateTime.Now));
+
+        var controller = new WorkoutsController(context).AuthenticatedAs(alice.UserId);
         var result = await controller.GetWorkoutHistory(alice.UserId);
 
         var workouts = Assert.IsAssignableFrom<IEnumerable<Workout>>(result.Value).ToList();
+        Assert.Single(workouts);
+        Assert.Equal(alice.UserId, workouts[0].UserId);
+    }
+
+    [Fact]
+    public async Task GetWorkoutHistory_ForAnotherUser_ReturnsForbidden()
+    {
+        using var context = TestDatabase.Create();
+        var alice = TestDatabase.SeedUser(context, "alice");
+        var bob = TestDatabase.SeedUser(context, "bob");
+        var controller = new WorkoutsController(context).AuthenticatedAs(alice.UserId);
+
+        var result = await controller.GetWorkoutHistory(bob.UserId);
+
+        Assert.IsType<ForbidResult>(result.Result);
+    }
+
+   
+    [Fact]
+    public async Task GetWorkouts_ReturnsOnlyTheAuthenticatedUsersSessions()
+    {
+        using var context = TestDatabase.Create();
+        var alice = TestDatabase.SeedUser(context, "alice");
+        var bob = TestDatabase.SeedUser(context, "bob");
+        var exercise = TestDatabase.SeedExercise(context);
+
+        await new WorkoutsController(context).AuthenticatedAs(alice.UserId)
+            .LogWorkout(BuildWorkout(alice.UserId, exercise.ExerciseId, DateTime.Now));
+        await new WorkoutsController(context).AuthenticatedAs(bob.UserId)
+            .LogWorkout(BuildWorkout(bob.UserId, exercise.ExerciseId, DateTime.Now));
+
+        var controller = new WorkoutsController(context).AuthenticatedAs(alice.UserId);
+        var result = await controller.GetWorkouts();
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var workouts = Assert.IsAssignableFrom<IEnumerable<Workout>>(ok.Value).ToList();
         Assert.Single(workouts);
         Assert.Equal(alice.UserId, workouts[0].UserId);
     }
@@ -110,7 +176,7 @@ public class WorkoutsControllerTests
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
         var exercise = TestDatabase.SeedExercise(context);
-        var controller = new WorkoutsController(context);
+        var controller = new WorkoutsController(context).AuthenticatedAs(user.UserId);
 
         await controller.LogWorkout(BuildWorkout(user.UserId, exercise.ExerciseId, DateTime.Now.AddDays(-5)));
         await controller.LogWorkout(BuildWorkout(user.UserId, exercise.ExerciseId, DateTime.Now));
@@ -129,7 +195,7 @@ public class WorkoutsControllerTests
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
         var exercise = TestDatabase.SeedExercise(context, "Deadlift", "back");
-        var controller = new WorkoutsController(context);
+        var controller = new WorkoutsController(context).AuthenticatedAs(user.UserId);
 
         await controller.LogWorkout(BuildWorkout(user.UserId, exercise.ExerciseId, DateTime.Now));
 
@@ -147,11 +213,10 @@ public class WorkoutsControllerTests
     {
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
-        var controller = new WorkoutsController(context);
+        var controller = new WorkoutsController(context).AuthenticatedAs(user.UserId);
 
         var result = await controller.GetWorkoutHistory(user.UserId);
 
-        var workouts = Assert.IsAssignableFrom<IEnumerable<Workout>>(result.Value);
-        Assert.Empty(workouts);
+        Assert.Empty(Assert.IsAssignableFrom<IEnumerable<Workout>>(result.Value));
     }
 }

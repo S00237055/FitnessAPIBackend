@@ -8,22 +8,24 @@ namespace FitnessAPI.Tests;
 
 public class FoodLogsControllerTests
 {
+    private static FoodLogDto SampleFood(int userId, string name = "Porridge") => new FoodLogDto
+    {
+        UserId = userId,
+        FoodName = name,
+        Calories = 389,
+        ProteinGrams = 16.9,
+        CarbsGrams = 66.3,
+        FatGrams = 6.9
+    };
+
     [Fact]
     public async Task PostFoodLog_WithValidData_ReturnsOk()
     {
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
-        var controller = new FoodLogsController(context);
+        var controller = new FoodLogsController(context).AuthenticatedAs(user.UserId);
 
-        var result = await controller.PostFoodLog(new FoodLogDto
-        {
-            UserId = user.UserId,
-            FoodName = "Porridge",
-            Calories = 389,
-            ProteinGrams = 16.9,
-            CarbsGrams = 66.3,
-            FatGrams = 6.9
-        });
+        var result = await controller.PostFoodLog(SampleFood(user.UserId));
 
         Assert.IsType<OkObjectResult>(result);
     }
@@ -33,17 +35,9 @@ public class FoodLogsControllerTests
     {
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
-        var controller = new FoodLogsController(context);
+        var controller = new FoodLogsController(context).AuthenticatedAs(user.UserId);
 
-        await controller.PostFoodLog(new FoodLogDto
-        {
-            UserId = user.UserId,
-            FoodName = "Porridge",
-            Calories = 389,
-            ProteinGrams = 16.9,
-            CarbsGrams = 66.3,
-            FatGrams = 6.9
-        });
+        await controller.PostFoodLog(SampleFood(user.UserId));
 
         var stored = await context.FoodLogs.SingleAsync();
         Assert.Equal("Porridge", stored.FoodName);
@@ -58,27 +52,63 @@ public class FoodLogsControllerTests
     {
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
-        var controller = new FoodLogsController(context);
+        var controller = new FoodLogsController(context).AuthenticatedAs(user.UserId);
 
         var before = DateTime.Now.AddSeconds(-5);
 
-        await controller.PostFoodLog(new FoodLogDto
-        {
-            UserId = user.UserId,
-            FoodName = "Banana",
-            Calories = 89,
-            ProteinGrams = 1.1,
-            CarbsGrams = 22.8,
-            FatGrams = 0.3
-        });
+        await controller.PostFoodLog(SampleFood(user.UserId, "Banana"));
 
         var stored = await context.FoodLogs.SingleAsync();
         Assert.NotNull(stored.DateEaten);
         Assert.InRange(stored.DateEaten!.Value, before, DateTime.Now.AddSeconds(5));
     }
 
+    
     [Fact]
-    public void GetUserFoodLogs_ReturnsOnlyTheRequestedUsersEntries()
+    public async Task PostFoodLog_IgnoresTheUserIdInTheBody_AndUsesTheToken()
+    {
+        using var context = TestDatabase.Create();
+        var alice = TestDatabase.SeedUser(context, "alice");
+        var bob = TestDatabase.SeedUser(context, "bob");
+
+        // Alice is authenticated but submits Bob's identifier in the payload.
+        var controller = new FoodLogsController(context).AuthenticatedAs(alice.UserId);
+
+        await controller.PostFoodLog(SampleFood(bob.UserId, "Injected"));
+
+        var stored = await context.FoodLogs.SingleAsync();
+        Assert.Equal(alice.UserId, stored.UserId);
+    }
+
+    [Fact]
+    public async Task PostFoodLog_WithNoFoodName_ReturnsBadRequest()
+    {
+        using var context = TestDatabase.Create();
+        var user = TestDatabase.SeedUser(context);
+        var controller = new FoodLogsController(context).AuthenticatedAs(user.UserId);
+
+        var dto = SampleFood(user.UserId);
+        dto.FoodName = "   ";
+
+        var result = await controller.PostFoodLog(dto);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task PostFoodLog_WithNoAuthenticatedIdentity_ReturnsUnauthorized()
+    {
+        using var context = TestDatabase.Create();
+        var user = TestDatabase.SeedUser(context);
+        var controller = new FoodLogsController(context).Anonymous();
+
+        var result = await controller.PostFoodLog(SampleFood(user.UserId));
+
+        Assert.IsType<UnauthorizedResult>(result);
+    }
+
+    [Fact]
+    public void GetUserFoodLogs_ReturnsOnlyTheAuthenticatedUsersEntries()
     {
         using var context = TestDatabase.Create();
         var alice = TestDatabase.SeedUser(context, "alice");
@@ -88,7 +118,7 @@ public class FoodLogsControllerTests
         TestDatabase.SeedFoodLog(context, bob.UserId, "Bob Food");
         TestDatabase.SeedFoodLog(context, bob.UserId, "Bob Second Food");
 
-        var controller = new FoodLogsController(context);
+        var controller = new FoodLogsController(context).AuthenticatedAs(alice.UserId);
 
         var result = controller.GetUserFoodLogs(alice.UserId);
 
@@ -96,6 +126,22 @@ public class FoodLogsControllerTests
         var logs = Assert.IsAssignableFrom<IEnumerable<FoodLog>>(ok.Value).ToList();
         Assert.Single(logs);
         Assert.Equal("Alice Food", logs[0].FoodName);
+    }
+
+    
+    [Fact]
+    public void GetUserFoodLogs_ForAnotherUser_ReturnsForbidden()
+    {
+        using var context = TestDatabase.Create();
+        var alice = TestDatabase.SeedUser(context, "alice");
+        var bob = TestDatabase.SeedUser(context, "bob");
+        TestDatabase.SeedFoodLog(context, bob.UserId, "Bob Food");
+
+        var controller = new FoodLogsController(context).AuthenticatedAs(alice.UserId);
+
+        var result = controller.GetUserFoodLogs(bob.UserId);
+
+        Assert.IsType<ForbidResult>(result);
     }
 
     [Fact]
@@ -108,7 +154,7 @@ public class FoodLogsControllerTests
         TestDatabase.SeedFoodLog(context, user.UserId, "Newest", eatenAt: DateTime.Now);
         TestDatabase.SeedFoodLog(context, user.UserId, "Middle", eatenAt: DateTime.Now.AddDays(-1));
 
-        var controller = new FoodLogsController(context);
+        var controller = new FoodLogsController(context).AuthenticatedAs(user.UserId);
 
         var result = controller.GetUserFoodLogs(user.UserId);
 
@@ -124,12 +170,11 @@ public class FoodLogsControllerTests
     {
         using var context = TestDatabase.Create();
         var user = TestDatabase.SeedUser(context);
-        var controller = new FoodLogsController(context);
+        var controller = new FoodLogsController(context).AuthenticatedAs(user.UserId);
 
         var result = controller.GetUserFoodLogs(user.UserId);
 
         var ok = Assert.IsType<OkObjectResult>(result);
-        var logs = Assert.IsAssignableFrom<IEnumerable<FoodLog>>(ok.Value);
-        Assert.Empty(logs);
+        Assert.Empty(Assert.IsAssignableFrom<IEnumerable<FoodLog>>(ok.Value));
     }
 }

@@ -1,4 +1,5 @@
-﻿using FitnessAPI.Models;
+using FitnessAPI.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -6,6 +7,7 @@ namespace FitnessAPI.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ExercisesController : ControllerBase
     {
         private readonly FitnessAppDbContext _context;
@@ -28,7 +30,6 @@ namespace FitnessAPI.Controllers
         [HttpPost]
         public async Task<ActionResult<Exercise>> PostExercise(Exercise exercise)
         {
-           
             if (_context.Exercises.Any(e => e.Name == exercise.Name))
             {
                 return BadRequest("This exercise already exists.");

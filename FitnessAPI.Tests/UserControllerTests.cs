@@ -6,20 +6,18 @@ using Xunit;
 
 namespace FitnessAPI.Tests;
 
-/// <summary>
-/// Integration tests for UserController. These exercise the controller together
-/// with Entity Framework Core against an in-memory database, so the full path
-/// from action method to persistence is covered.
-/// </summary>
+
 public class UserControllerTests
 {
-    // ---------------------------------------------------------------- Register
+    private static UserController CreateController(FitnessAppDbContext context)
+        => new UserController(context, new FakeTokenService());
 
+    
     [Fact]
     public async Task Register_WithNewUsername_ReturnsOk()
     {
         using var context = TestDatabase.Create();
-        var controller = new UserController(context);
+        var controller = CreateController(context);
 
         var result = await controller.Register(new UserController.RegisterRequest
         {
@@ -30,16 +28,33 @@ public class UserControllerTests
         });
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var dto = Assert.IsType<UserResponseDto>(ok.Value);
+        var dto = Assert.IsType<AuthResponseDto>(ok.Value);
         Assert.Equal("newuser", dto.Username);
         Assert.Equal(75, dto.CurrentWeight);
+    }
+
+    [Fact]
+    public async Task Register_ReturnsAnAuthenticationToken()
+    {
+        using var context = TestDatabase.Create();
+        var controller = CreateController(context);
+
+        var result = await controller.Register(new UserController.RegisterRequest
+        {
+            Username = "newuser",
+            Password = "Password123"
+        });
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var dto = Assert.IsType<AuthResponseDto>(ok.Value);
+        Assert.False(string.IsNullOrWhiteSpace(dto.Token));
     }
 
     [Fact]
     public async Task Register_PersistsTheUserToTheDatabase()
     {
         using var context = TestDatabase.Create();
-        var controller = new UserController(context);
+        var controller = CreateController(context);
 
         await controller.Register(new UserController.RegisterRequest
         {
@@ -55,7 +70,7 @@ public class UserControllerTests
     public async Task Register_DoesNotStoreThePasswordInPlaintext()
     {
         using var context = TestDatabase.Create();
-        var controller = new UserController(context);
+        var controller = CreateController(context);
 
         await controller.Register(new UserController.RegisterRequest
         {
@@ -72,7 +87,7 @@ public class UserControllerTests
     public async Task Register_StoredHashVerifiesAgainstTheOriginalPassword()
     {
         using var context = TestDatabase.Create();
-        var controller = new UserController(context);
+        var controller = CreateController(context);
 
         await controller.Register(new UserController.RegisterRequest
         {
@@ -92,7 +107,7 @@ public class UserControllerTests
     {
         using var context = TestDatabase.Create();
         TestDatabase.SeedUser(context, "taken");
-        var controller = new UserController(context);
+        var controller = CreateController(context);
 
         var result = await controller.Register(new UserController.RegisterRequest
         {
@@ -108,7 +123,7 @@ public class UserControllerTests
     {
         using var context = TestDatabase.Create();
         TestDatabase.SeedUser(context, "taken");
-        var controller = new UserController(context);
+        var controller = CreateController(context);
 
         var result = await controller.Register(new UserController.RegisterRequest
         {
@@ -116,7 +131,6 @@ public class UserControllerTests
             Password = "Password123"
         });
 
-        // "TAKEN" and "taken" must not be treated as two different accounts.
         Assert.IsType<BadRequestObjectResult>(result.Result);
     }
 
@@ -125,7 +139,7 @@ public class UserControllerTests
     {
         using var context = TestDatabase.Create();
         TestDatabase.SeedUser(context, "taken");
-        var controller = new UserController(context);
+        var controller = CreateController(context);
 
         await controller.Register(new UserController.RegisterRequest
         {
@@ -136,6 +150,21 @@ public class UserControllerTests
         Assert.Equal(1, await context.Users.CountAsync());
     }
 
+    [Fact]
+    public async Task Register_WithAnEmptyUsername_ReturnsBadRequest()
+    {
+        using var context = TestDatabase.Create();
+        var controller = CreateController(context);
+
+        var result = await controller.Register(new UserController.RegisterRequest
+        {
+            Username = "",
+            Password = "Password123"
+        });
+
+        Assert.IsType<BadRequestObjectResult>(result.Result);
+    }
+
     // ------------------------------------------------------------------- Login
 
     [Fact]
@@ -143,7 +172,7 @@ public class UserControllerTests
     {
         using var context = TestDatabase.Create();
         TestDatabase.SeedUser(context, "alice", "Password123");
-        var controller = new UserController(context);
+        var controller = CreateController(context);
 
         var result = await controller.Login(new UserController.LoginRequest
         {
@@ -152,15 +181,33 @@ public class UserControllerTests
         });
 
         var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var dto = Assert.IsType<UserResponseDto>(ok.Value);
+        var dto = Assert.IsType<AuthResponseDto>(ok.Value);
         Assert.Equal("alice", dto.Username);
+    }
+
+    [Fact]
+    public async Task Login_ReturnsAnAuthenticationToken()
+    {
+        using var context = TestDatabase.Create();
+        var seeded = TestDatabase.SeedUser(context, "alice", "Password123");
+        var controller = CreateController(context);
+
+        var result = await controller.Login(new UserController.LoginRequest
+        {
+            Username = "alice",
+            Password = "Password123"
+        });
+
+        var ok = Assert.IsType<OkObjectResult>(result.Result);
+        var dto = Assert.IsType<AuthResponseDto>(ok.Value);
+        Assert.Equal($"test-token-for-user-{seeded.UserId}", dto.Token);
     }
 
     [Fact]
     public async Task Login_WithUnknownUsername_ReturnsUnauthorized()
     {
         using var context = TestDatabase.Create();
-        var controller = new UserController(context);
+        var controller = CreateController(context);
 
         var result = await controller.Login(new UserController.LoginRequest
         {
@@ -176,7 +223,7 @@ public class UserControllerTests
     {
         using var context = TestDatabase.Create();
         TestDatabase.SeedUser(context, "alice", "Password123");
-        var controller = new UserController(context);
+        var controller = CreateController(context);
 
         var result = await controller.Login(new UserController.LoginRequest
         {
@@ -192,7 +239,7 @@ public class UserControllerTests
     {
         using var context = TestDatabase.Create();
         TestDatabase.SeedUser(context, "alice", "Password123");
-        var controller = new UserController(context);
+        var controller = CreateController(context);
 
         var unknownUser = await controller.Login(new UserController.LoginRequest
         {
@@ -208,62 +255,15 @@ public class UserControllerTests
         var first = Assert.IsType<UnauthorizedObjectResult>(unknownUser.Result);
         var second = Assert.IsType<UnauthorizedObjectResult>(wrongPassword.Result);
 
-        // Differentiated messages would let an attacker enumerate valid usernames.
         Assert.Equal(first.Value, second.Value);
     }
 
     [Fact]
-    public async Task Login_ResponseDoesNotExposeCredentialFields()
-    {
-        using var context = TestDatabase.Create();
-        TestDatabase.SeedUser(context, "alice", "Password123");
-        var controller = new UserController(context);
-
-        var result = await controller.Login(new UserController.LoginRequest
-        {
-            Username = "alice",
-            Password = "Password123"
-        });
-
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        Assert.IsNotType<User>(ok.Value);
-        Assert.IsType<UserResponseDto>(ok.Value);
-    }
-
-    // --------------------------------------------------------------- Retrieval
-
-    [Fact]
-    public async Task GetUsers_ReturnsAllUsersAsResponseDtos()
-    {
-        using var context = TestDatabase.Create();
-        TestDatabase.SeedUser(context, "alice");
-        TestDatabase.SeedUser(context, "bob");
-        var controller = new UserController(context);
-
-        var result = await controller.GetUsers();
-
-        var ok = Assert.IsType<OkObjectResult>(result.Result);
-        var users = Assert.IsAssignableFrom<IEnumerable<UserResponseDto>>(ok.Value);
-        Assert.Equal(2, users.Count());
-    }
-
-    [Fact]
-    public async Task GetUser_WithUnknownId_ReturnsNotFound()
-    {
-        using var context = TestDatabase.Create();
-        var controller = new UserController(context);
-
-        var result = await controller.GetUser(9999);
-
-        Assert.IsType<NotFoundResult>(result.Result);
-    }
-
-    [Fact]
-    public async Task GetUser_WithExistingId_ReturnsTheUser()
+    public async Task GetUser_ForTheAuthenticatedUser_ReturnsTheProfile()
     {
         using var context = TestDatabase.Create();
         var seeded = TestDatabase.SeedUser(context, "alice");
-        var controller = new UserController(context);
+        var controller = CreateController(context).AuthenticatedAs(seeded.UserId);
 
         var result = await controller.GetUser(seeded.UserId);
 
@@ -272,36 +272,64 @@ public class UserControllerTests
         Assert.Equal("alice", dto.Username);
     }
 
-    /// <summary>
-    /// SECURITY TEST. GetUser must not return the raw entity, because the User
-    /// entity carries PasswordHash and PasswordSalt and both would be serialised
-    /// to the client.
-    /// </summary>
+
     [Fact]
     public async Task GetUser_MustNotExposePasswordHashOrSalt()
     {
         using var context = TestDatabase.Create();
         var seeded = TestDatabase.SeedUser(context, "alice");
-        var controller = new UserController(context);
+        var controller = CreateController(context).AuthenticatedAs(seeded.UserId);
 
         var result = await controller.GetUser(seeded.UserId);
 
-        // The action builds a UserResponseDto but returns the entity instead.
-        // This assertion fails until the action returns Ok(userResponse).
-        Assert.Null(result.Value);
-
         var ok = Assert.IsType<OkObjectResult>(result.Result);
+        Assert.IsNotType<User>(ok.Value);
         Assert.IsType<UserResponseDto>(ok.Value);
     }
 
-    // ----------------------------------------------------------- Profile update
+    [Fact]
+    public async Task GetUser_ForAnotherUsersProfile_ReturnsForbidden()
+    {
+        using var context = TestDatabase.Create();
+        var alice = TestDatabase.SeedUser(context, "alice");
+        var bob = TestDatabase.SeedUser(context, "bob");
+        var controller = CreateController(context).AuthenticatedAs(alice.UserId);
+
+        var result = await controller.GetUser(bob.UserId);
+
+        Assert.IsType<ForbidResult>(result.Result);
+    }
 
     [Fact]
-    public async Task UpdateProfile_WithExistingUser_UpdatesTheStoredValues()
+    public async Task GetUser_WithNoAuthenticatedIdentity_ReturnsUnauthorized()
+    {
+        using var context = TestDatabase.Create();
+        var seeded = TestDatabase.SeedUser(context, "alice");
+        var controller = CreateController(context).Anonymous();
+
+        var result = await controller.GetUser(seeded.UserId);
+
+        Assert.IsType<UnauthorizedResult>(result.Result);
+    }
+
+    [Fact]
+    public async Task GetUser_WithUnknownId_ReturnsNotFound()
+    {
+        using var context = TestDatabase.Create();
+        var controller = CreateController(context).AuthenticatedAs(9999);
+
+        var result = await controller.GetUser(9999);
+
+        Assert.IsType<NotFoundResult>(result.Result);
+    }
+
+
+    [Fact]
+    public async Task UpdateProfile_ForTheAuthenticatedUser_UpdatesTheStoredValues()
     {
         using var context = TestDatabase.Create();
         var seeded = TestDatabase.SeedUser(context, "alice", weight: 80, goal: "Build Muscle");
-        var controller = new UserController(context);
+        var controller = CreateController(context).AuthenticatedAs(seeded.UserId);
 
         await controller.UpdateProfile(seeded.UserId, new UserController.UpdateProfileRequest
         {
@@ -319,7 +347,7 @@ public class UserControllerTests
     {
         using var context = TestDatabase.Create();
         var seeded = TestDatabase.SeedUser(context, "alice");
-        var controller = new UserController(context);
+        var controller = CreateController(context).AuthenticatedAs(seeded.UserId);
 
         var result = await controller.UpdateProfile(seeded.UserId, new UserController.UpdateProfileRequest
         {
@@ -333,10 +361,30 @@ public class UserControllerTests
     }
 
     [Fact]
+    public async Task UpdateProfile_ForAnotherUsersProfile_ReturnsForbidden()
+    {
+        using var context = TestDatabase.Create();
+        var alice = TestDatabase.SeedUser(context, "alice");
+        var bob = TestDatabase.SeedUser(context, "bob", weight: 90);
+        var controller = CreateController(context).AuthenticatedAs(alice.UserId);
+
+        var result = await controller.UpdateProfile(bob.UserId, new UserController.UpdateProfileRequest
+        {
+            CurrentWeight = 1,
+            GoalType = "Tampered"
+        });
+
+        Assert.IsType<ForbidResult>(result.Result);
+
+        var stored = await context.Users.SingleAsync(u => u.UserId == bob.UserId);
+        Assert.Equal(90, stored.CurrentWeight);
+    }
+
+    [Fact]
     public async Task UpdateProfile_WithUnknownUser_ReturnsNotFound()
     {
         using var context = TestDatabase.Create();
-        var controller = new UserController(context);
+        var controller = CreateController(context).AuthenticatedAs(9999);
 
         var result = await controller.UpdateProfile(9999, new UserController.UpdateProfileRequest
         {
